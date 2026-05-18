@@ -164,10 +164,6 @@
   .metric.green { color: var(--success); }
   .metric.blue { color: var(--primary); }
   .metric.orange { color: var(--warning); }
-  .ctr-bar { display: flex; align-items: center; gap: 8px; }
-  .ctr-bar-inner { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
-  .ctr-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--success)); border-radius: 3px; transition: width 0.5s; }
-  .ctr-value { font-size: 12px; font-weight: 600; color: var(--primary); min-width: 45px; text-align: right; }
 
   /* ===== Filter Bar ===== */
   .filter-bar {
@@ -801,7 +797,6 @@ function renderElementTable() {
   const tbody = document.getElementById('elementTableBody');
   tbody.innerHTML = pageData.map((e, i) => {
     const isActive = selectedElement === e.id ? 'active' : '';
-    const ctrWidth = Math.min(e.ctr * 2, 100);
     return `
       <tr class="${isActive}">
         <td>
@@ -811,12 +806,7 @@ function renderElementTable() {
         <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--text-secondary);" title="${e.url}">${e.url}</td>
         <td class="metric blue">${e.expose.toLocaleString()}</td>
         <td class="metric green">${e.click.toLocaleString()}</td>
-        <td>
-          <div class="ctr-bar">
-            <div class="ctr-bar-inner"><div class="ctr-bar-fill" style="width:${ctrWidth}%"></div></div>
-            <span class="ctr-value">${e.ctr}%</span>
-          </div>
-        </td>
+        <td class="metric">${e.ctr}%</td>
         <td class="metric">${e.users.toLocaleString()}</td>
       </tr>
     `;
