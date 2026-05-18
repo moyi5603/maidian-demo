@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>正式埋点数据明细表 - 优化版</title>
+<style>
+  :root {
+    --primary: #4F6EF7;
+    --primary-light: #EEF1FE;
+    --primary-dark: #3A54D4;
+    --success: #34C759;
+    --warning: #FF9500;
+    --danger: #FF3B30;
+    --info: #5AC8FA;
+    --bg: #F5F7FA;
+    --card: #FFFFFF;
+    --text-primary: #1D2939;
+    --text-secondary: #667085;
+    --text-muted: #98A2B3;
+    --border: #E4E7EC;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.6;
+  }
+
+  /* ===== Header ===== */
+  .header {
+    background: linear-gradient(135deg, var(--primary) 0%, #6C8CFF 100%);
+    color: white;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(79,110,247,0.3);
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .header-icon {
+    width: 40px; height: 40px;
+    background: rgba(255,255,255,0.2);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header p { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+  .header-actions { display: flex; gap: 10px; }
+  .header-btn {
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.15);
+    color: white;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .header-btn:hover { background: rgba(255,255,255,0.25); }
+  .header-btn.primary { background: white; color: var(--primary); border-color: white; font-weight: 500; }
+  .header-btn.primary:hover { background: #f0f0ff; }
+
+  /* ===== Main Container ===== */
+  .container { padding: 24px 32px; max-width: 1600px; margin: 0 auto; }
+
+  /* ===== Element Dashboard ===== */
+  .dashboard-card {
+    background: var(--card);
+    border-radius: var(--radius-md);
+    padding: 20px 24px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .dashboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .dashboard-header h3 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .dashboard-tabs { display: flex; gap: 8px; }
+  .dashboard-tab {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+  }
+  .dashboard-tab.active, .dashboard-tab:hover { background: var(--primary); color: white; border-color: var(--primary); }
+
+  /* Summary Cards Row */
+  .summary-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .summary-item {
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    text-align: center;
+  }
+  .summary-item .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .summary-item .value { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+  .summary-item .sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .summary-item .value.up { color: var(--success); }
+  .summary-item .value.down { color: var(--danger); }
+
+  /* Element Table */
+  .element-table { width: 100%; border-collapse: collapse; }
+  .element-table thead { background: var(--bg); }
+  .element-table th {
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .element-table th:hover { color: var(--primary); }
+  .element-table th .sort-icon { font-size: 10px; margin-left: 4px; opacity: 0.4; }
+  .element-table td {
+    padding: 10px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid #f5f5f5;
+  }
+  .element-table tbody tr:hover { background: var(--primary-light); }
+  .rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--bg);
+    color: var(--text-secondary);
+  }
+  .rank-badge.top1 { background: #FFF3E0; color: #FF9500; }
+  .rank-badge.top2 { background: #E8F5E9; color: #4CAF50; }
+  .rank-badge.top3 { background: #E3F2FD; color: #2196F3; }
+  .biz-name { font-weight: 500; }
+  .biz-url { font-size: 11px; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px; }
+  .metric { font-weight: 600; }
+  .metric.green { color: var(--success); }
+  .metric.blue { color: var(--primary); }
+  .metric.orange { color: var(--warning); }
+
+  /* ===== Filter Bar ===== */
+  .filter-bar {
+    background: var(--card);
+    border-radius: var(--radius-md);
+    padding: 16px 24px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .filter-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .quick-tags { display: flex; gap: 8px; margin-bottom: 12px; }
+  .quick-tag {
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+  }
+  .quick-tag.active, .quick-tag:hover { background: var(--primary); color: white; border-color: var(--primary); }
+  .filter-group { display: flex; align-items: center; gap: 8px; }
+  .filter-label { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+  .filter-input, .filter-select {
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.2s;
+    background: white;
+  }
+  .filter-input:focus, .filter-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,110,247,0.1); }
+  .filter-input { width: 140px; }
+  .filter-select { min-width: 160px; }
+  .date-range { display: flex; align-items: center; gap: 6px; }
+  .date-range span { color: var(--text-muted); font-size: 12px; }
+
+  /* Searchable Select */
+  .searchable-select { position: relative; }
+  .select-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+    margin-top: 4px;
+  }
+  .select-option {
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .select-option:hover { background: var(--primary-light); color: var(--primary); }
+  .select-option.selected { background: var(--primary); color: white; }
+  .select-option.hidden { display: none; }
+  .filter-actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn {
+    padding: 7px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-default { background: white; color: var(--text-secondary); }
+  .btn-default:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-success { background: var(--success); color: white; border-color: var(--success); }
+  .btn-success:hover { opacity: 0.9; }
+
+  /* ===== Table ===== */
+  .table-card {
+    background: var(--card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .table-toolbar h3 { font-size: 15px; font-weight: 600; }
+  .table-toolbar-right { display: flex; align-items: center; gap: 10px; }
+  .table-info { font-size: 12px; color: var(--text-muted); }
+  .filter-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--primary-light);
+    color: var(--primary);
+    border-radius: 20px;
+    font-size: 12px;
+    margin-left: 12px;
+  }
+  .filter-tag .close {
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .filter-tag .close:hover { opacity: 0.7; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: #F8FAFC; }
+  th {
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+    user-select: none;
+    cursor: pointer;
+  }
+  th:hover { color: var(--primary); }
+  th .sort-icon { font-size: 10px; margin-left: 4px; opacity: 0.4; }
+  td {
+    padding: 12px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid #f5f5f5;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  tr { transition: background 0.15s; }
+  tbody tr:hover { background: var(--primary-light); }
+  td.event-name { color: var(--text-primary); font-size: 13px; }
+  td.plain-cell { font-size: 12px; color: var(--text-secondary); }
+  td.url-cell {
+    font-size: 12px;
+    color: var(--text-secondary);
+    max-width: 260px;
+  }
+  .json-toggle {
+    color: var(--primary);
+    cursor: pointer;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .json-toggle:hover { text-decoration: underline; }
+
+  /* ===== JSON Modal ===== */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-content {
+    background: var(--card);
+    border-radius: var(--radius-md);
+    width: 100%;
+    max-width: 600px;
+    max-height: 80vh;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-header h4 { font-size: 15px; font-weight: 600; }
+  .modal-close {
+    width: 28px; height: 28px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--bg);
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .modal-close:hover { background: var(--border); color: var(--text-primary); }
+  .modal-body {
+    padding: 0;
+    overflow: auto;
+    flex: 1;
+  }
+  .json-code {
+    background: #1E1E2E;
+    color: #CDD6F4;
+    padding: 20px;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0;
+  }
+  .json-key { color: #89B4FA; }
+  .json-string { color: #A6E3A1; }
+  .json-number { color: #FAB387; }
+
+  /* ===== Pagination ===== */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-top: 1px solid var(--border);
+  }
+  .pagination-info { font-size: 13px; color: var(--text-secondary); }
+  .pagination-info strong { color: var(--primary); }
+  .pagination-controls { display: flex; align-items: center; gap: 4px; }
+  .page-btn {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .page-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .page-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .page-size-select {
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    margin-left: 12px;
+  }
+  .page-jump { display: flex; align-items: center; gap: 6px; margin-left: 12px; font-size: 13px; color: var(--text-secondary); }
+  .page-jump input { width: 48px; padding: 4px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; text-align: center; }
+
+  /* ===== Toast ===== */
+  .toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--card);
+    border-radius: var(--radius-md);
+    padding: 14px 20px;
+    box-shadow: var(--shadow-lg);
+    border-left: 4px solid var(--success);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    z-index: 1000;
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+  }
+  .toast.show { transform: translateX(0); }
+  .toast .toast-icon { font-size: 18px; }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 1200px) {
+    .summary-row { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 768px) {
+    .container { padding: 16px; }
+    .summary-row { grid-template-columns: repeat(2, 1fr); }
+    .filter-row { flex-direction: column; align-items: stretch; }
+    .filter-actions { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<noscript>
+  <div style="padding:24px;text-align:center;font-family:sans-serif;">
+    请启用 JavaScript 以查看埋点数据明细表。
+  </div>
+</noscript>
+
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span class="toast-icon">✅</span>
+  <span id="toast-msg">操作成功</span>
+</div>
+
+<!-- JSON Modal -->
+<div class="modal-overlay" id="jsonModal" onclick="if(event.target===this)closeJsonModal()">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h4>📄 详细数据 (JSON)</h4>
+      <button class="modal-close" onclick="closeJsonModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <pre class="json-code" id="jsonModalContent"></pre>
+    </div>
+  </div>
+</div>
+
+<div class="container" style="padding-top:24px;">
+
+  <!-- ===== Global Filter Bar ===== -->
+  <div class="filter-bar" style="margin-bottom:16px;">
+    <div class="filter-row">
+      <div class="filter-group">
+        <span class="filter-label">租户</span>
+        <div class="searchable-select" id="tenantSearchableSelect">
+          <input type="text" class="filter-input" id="tenantInput" placeholder="搜索或选择租户" autocomplete="off" style="width:140px;">
+          <div class="select-dropdown" id="tenantDropdown" style="display:none;">
+            <div class="select-option" data-value="">全部租户</div>
+            <div class="select-option" data-value="1510">租户 1510</div>
+            <div class="select-option" data-value="1073">租户 1073</div>
+            <div class="select-option" data-value="1511">租户 1511</div>
+            <div class="select-option" data-value="1001">租户 1001</div>
+            <div class="select-option" data-value="1002">租户 1002</div>
+            <div class="select-option" data-value="1003">租户 1003</div>
+            <div class="select-option" data-value="2001">租户 2001</div>
+            <div class="select-option" data-value="2002">租户 2002</div>
+            <div class="select-option" data-value="2003">租户 2003</div>
+          </div>
+        </div>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">组件名称</span>
+        <select class="filter-select" id="componentFilter" style="min-width:110px;">
+          <option value="">全部组件</option>
+          <option>轮播图</option>
+          <option>搜索按钮</option>
+          <option>导航展开</option>
+          <option>导航收起</option>
+          <option>热词</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">上报时间</span>
+        <div class="date-range">
+          <input type="date" class="filter-input" id="dateStart" value="2026-05-08">
+          <span>至</span>
+          <input type="date" class="filter-input" id="dateEnd" value="2026-05-15">
+        </div>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">用户ID</span>
+        <input type="text" class="filter-input" placeholder="输入用户ID" style="width:100px;">
+      </div>
+      <div class="filter-actions">
+        <button class="btn btn-default" onclick="resetFilters()">重置</button>
+        <button class="btn btn-primary" onclick="showToast('查询完成，共找到 18,375,408 条记录')">🔍 查询</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Element Dashboard ===== -->
+  <div class="dashboard-card">
+    <div class="dashboard-header">
+      <h3>📈 元素数据看板 <span style="font-weight:400;font-size:12px;color:var(--text-secondary);">（点击元素筛选明细数据，点击列头排序）</span></h3>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-row" id="summaryRow">
+      <div class="summary-item">
+        <div class="label">曝光元素数</div>
+        <div class="value" id="totalElements">6</div>
+        <div class="sub">个</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">总曝光次数</div>
+        <div class="value" id="totalExpose">12,450</div>
+        <div class="sub">次</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">总点击次数</div>
+        <div class="value" id="totalClick">3,580</div>
+        <div class="sub">次</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">整体点击率</div>
+        <div class="value" id="totalCtr">28.8%</div>
+        <div class="sub">CTR</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">曝光用户数</div>
+        <div class="value" id="totalUsers">8,234</div>
+        <div class="sub">人</div>
+      </div>
+    </div>
+
+    <!-- Element Ranking Table -->
+    <div class="element-table-wrap" style="max-height:400px;overflow-y:auto;">
+      <table class="element-table">
+        <thead style="position:sticky;top:0;z-index:1;">
+          <tr>
+            <th>元素名称</th>
+            <th>元素地址</th>
+            <th onclick="sortElements('expose')">曝光次数 <span class="sort-icon">⇅</span></th>
+            <th onclick="sortElements('click')">点击次数 <span class="sort-icon">⇅</span></th>
+            <th onclick="sortElements('ctr')">点击率 <span class="sort-icon">⇅</span></th>
+            <th onclick="sortElements('users')">曝光人数 <span class="sort-icon">⇅</span></th>
+          </tr>
+        </thead>
+        <tbody id="elementTableBody"></tbody>
+      </table>
+    </div>
+    <div class="element-pagination" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+      <button class="page-btn" onclick="prevElementPage()" id="elementPrev">‹</button>
+      <span id="elementPageInfo" style="font-size:13px;color:var(--text-secondary);">第 1 页 / 共 1 页</span>
+      <button class="page-btn" onclick="nextElementPage()" id="elementNext">›</button>
+      <select class="page-size-select" onchange="changeElementPageSize(this.value)" style="margin-left:12px;">
+        <option value="10">10条/页</option>
+        <option value="20" selected>20条/页</option>
+        <option value="50">50条/页</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="table-toolbar">
+      <div style="display:flex;align-items:center;gap:16px;">
+        <h3>📋 事件明细</h3>
+        <span class="table-info">共 <strong id="totalRecords">18,375,408</strong> 条记录</span>
+        <span class="filter-tag" id="filterTag" style="display:none;">
+          <span id="filterTagText"></span>
+          <span class="close" onclick="clearElementFilter()">×</span>
+        </span>
+      </div>
+      <div class="table-toolbar-right">
+        <button class="btn btn-success" onclick="showToast('数据导出中，请稍候...')" style="font-size:12px;">📥 导出</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:50px;">#</th>
+            <th>上报时间</th>
+            <th>用户ID</th>
+            <th>租户ID</th>
+            <th>事件名称</th>
+            <th>组件名称</th>
+            <th>设备</th>
+            <th>系统</th>
+            <th>网络</th>
+            <th>元素地址</th>
+            <th>详细数据</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <div class="pagination-info">
+        显示第 <strong>1-20</strong> 条，共 <strong>18,375,408</strong> 条
+      </div>
+      <div style="display:flex;align-items:center;">
+        <div class="pagination-controls">
+          <button class="page-btn" disabled>‹</button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn" onclick="showToast('跳转到第 2 页')">2</button>
+          <button class="page-btn" onclick="showToast('跳转到第 3 页')">3</button>
+          <button class="page-btn" disabled>...</button>
+          <button class="page-btn" onclick="showToast('跳转到第 918577 页')">918577</button>
+          <button class="page-btn" onclick="showToast('跳转到第 2 页')">›</button>
+        </div>
+        <select class="page-size-select">
+          <option>20条/页</option>
+          <option>50条/页</option>
+          <option>100条/页</option>
+        </select>
+        <div class="page-jump">
+          跳至 <input type="text" value="1"> 页
+          <button class="btn btn-primary" style="padding:4px 12px;font-size:12px;" onclick="showToast('跳转成功')">Go</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== Element Data =====
+// 按单个元素维度展示（如轮播图-01、轮播图-02）
+const elementData = [
+  { id: 'banner_01', name: '轮播图-01', url: 'https://saas.joybenefits.cn/img/banner_01.png', expose: 3250, click: 980, users: 2100, ctr: 30.2 },
+  { id: 'banner_02', name: '轮播图-02', url: 'https://saas.joybenefits.cn/img/banner_02.png', expose: 2800, click: 756, users: 1850, ctr: 27.0 },
+  { id: 'banner_03', name: '轮播图-03', url: 'https://saas.joybenefits.cn/img/banner_03.png', expose: 2450, click: 685, users: 1620, ctr: 28.0 },
+  { id: 'banner_04', name: '轮播图-04', url: 'https://saas.joybenefits.cn/img/banner_04.png', expose: 2100, click: 525, users: 1380, ctr: 25.0 },
+  { id: 'banner_05', name: '轮播图-05', url: 'https://saas.joybenefits.cn/img/banner_05.png', expose: 1800, click: 432, users: 1200, ctr: 24.0 },
+  { id: 'banner_06', name: '轮播图-06', url: 'https://saas.joybenefits.cn/img/banner_06.png', expose: 650, click: 214, users: 540, ctr: 32.9 },
+  { id: 'search_btn', name: '搜索按钮', url: 'https://saas.joybenefits.cn/template/1502647572117442?index=1', expose: 1200, click: 420, users: 980, ctr: 35.0 },
+  { id: 'nav_expand', name: '导航展开', url: '', expose: 980, click: 320, users: 850, ctr: 32.7 },
+  { id: 'nav_collapse', name: '导航收起', url: '', expose: 850, click: 280, users: 720, ctr: 32.9 },
+  { id: 'hot_keyword_01', name: '热词-01', url: 'https://saas.joybenefits.cn/search/hot?k=1', expose: 750, click: 210, users: 680, ctr: 28.0 },
+  { id: 'hot_keyword_02', name: '热词-02', url: 'https://saas.joybenefits.cn/search/hot?k=2', expose: 680, click: 185, users: 620, ctr: 27.2 },
+  { id: 'hot_keyword_03', name: '热词-03', url: 'https://saas.joybenefits.cn/search/hot?k=3', expose: 620, click: 165, users: 580, ctr: 26.6 },
+];
+
+let currentSort = { field: 'expose', desc: true };
+let selectedElement = null;
+let filteredElementData = [...elementData];
+let elementPage = 1;
+let elementPageSize = 20;
+
+// ===== Render Summary =====
+function renderSummary() {
+  const totalExpose = filteredElementData.reduce((sum, e) => sum + e.expose, 0);
+  const totalClick = filteredElementData.reduce((sum, e) => sum + e.click, 0);
+  const totalUsers = filteredElementData.reduce((sum, e) => sum + e.users, 0);
+  const avgCtr = totalExpose > 0 ? ((totalClick / totalExpose) * 100).toFixed(1) : '0.0';
+
+  document.getElementById('totalElements').textContent = filteredElementData.length;
+  document.getElementById('totalExpose').textContent = totalExpose.toLocaleString();
+  document.getElementById('totalClick').textContent = totalClick.toLocaleString();
+  document.getElementById('totalCtr').textContent = avgCtr + '%';
+  document.getElementById('totalUsers').textContent = totalUsers.toLocaleString();
+}
+
+// ===== Searchable Select for Tenant =====
+let selectedTenantId = '';
+
+function initTenantSearchableSelect() {
+  const input = document.getElementById('tenantInput');
+  const dropdown = document.getElementById('tenantDropdown');
+  const options = dropdown.querySelectorAll('.select-option');
+
+  // 点击输入框显示下拉
+  input.addEventListener('focus', () => {
+    dropdown.style.display = 'block';
+    filterTenantOptions('');
+  });
+
+  // 点击外部关闭下拉
+  document.addEventListener('click', (e) => {
+    const wrap = document.getElementById('tenantSearchableSelect');
+    if (wrap && !wrap.contains(e.target)) {
+      dropdown.style.display = 'none';
+    }
+  });
+
+  // 输入时过滤选项
+  input.addEventListener('input', (e) => {
+    filterTenantOptions(e.target.value);
+    dropdown.style.display = 'block';
+  });
+
+  // 点击选项
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      const value = option.dataset.value;
+      const text = option.textContent;
+      input.value = text;
+      selectedTenantId = value;
+      dropdown.style.display = 'none';
+      filterByTenant(value);
+    });
+  });
+}
+
+function filterTenantOptions(searchText) {
+  const dropdown = document.getElementById('tenantDropdown');
+  const options = dropdown.querySelectorAll('.select-option');
+  const lowerSearch = searchText.toLowerCase();
+
+  options.forEach(option => {
+    const text = option.textContent.toLowerCase();
+    const value = option.dataset.value;
+    if (text.includes(lowerSearch) || value.includes(lowerSearch)) {
+      option.classList.remove('hidden');
+    } else {
+      option.classList.add('hidden');
+    }
+  });
+}
+
+// ===== Filter By Tenant =====
+function filterByTenant(tenantId) {
+  if (tenantId) {
+    // 模拟按租户筛选数据
+    filteredElementData = elementData.map(e => ({
+      ...e,
+      expose: Math.floor(e.expose * (0.5 + Math.random() * 0.5)),
+      click: Math.floor(e.click * (0.5 + Math.random() * 0.5)),
+      users: Math.floor(e.users * (0.5 + Math.random() * 0.5)),
+      ctr: parseFloat((Math.random() * 20 + 20).toFixed(1))
+    }));
+    showToast(`已筛选租户 ${tenantId}，共 ${filteredElementData.length} 个元素`);
+  } else {
+    filteredElementData = [...elementData];
+    showToast('已显示全部租户');
+  }
+  elementPage = 1;
+  renderSummary();
+  renderElementTable();
+}
+
+// ===== Render Element Table =====
+function renderElementTable() {
+  // Sort data
+  filteredElementData.sort((a, b) => {
+    if (currentSort.desc) {
+      return b[currentSort.field] - a[currentSort.field];
+    } else {
+      return a[currentSort.field] - b[currentSort.field];
+    }
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredElementData.length / elementPageSize) || 1;
+  const start = (elementPage - 1) * elementPageSize;
+  const end = start + elementPageSize;
+  const pageData = filteredElementData.slice(start, end);
+
+  const tbody = document.getElementById('elementTableBody');
+  tbody.innerHTML = pageData.map((e, i) => {
+    const isActive = selectedElement === e.id ? 'active' : '';
+    return `
+      <tr class="${isActive}" onclick="selectElement('${e.id}', '${e.name.replace(/'/g, "\\'")}')" style="cursor:pointer;">
+        <td>
+          <div class="biz-name">${e.name}</div>
+          <div class="biz-url">${e.id}</div>
+        </td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--text-secondary);" title="${e.url}">${e.url}</td>
+        <td class="metric blue">${e.expose.toLocaleString()}</td>
+        <td class="metric green">${e.click.toLocaleString()}</td>
+        <td class="metric">${e.ctr}%</td>
+        <td class="metric">${e.users.toLocaleString()}</td>
+      </tr>
+    `;
+  }).join('');
+
+  // Update pagination
+  document.getElementById('elementPageInfo').textContent = `第 ${elementPage} 页 / 共 ${totalPages} 页`;
+  document.getElementById('elementPrev').disabled = elementPage <= 1;
+  document.getElementById('elementNext').disabled = elementPage >= totalPages;
+}
+
+// ===== Element Pagination =====
+function prevElementPage() {
+  if (elementPage > 1) {
+    elementPage--;
+    renderElementTable();
+  }
+}
+
+function nextElementPage() {
+  const totalPages = Math.ceil(filteredElementData.length / elementPageSize);
+  if (elementPage < totalPages) {
+    elementPage++;
+    renderElementTable();
+  }
+}
+
+function changeElementPageSize(size) {
+  elementPageSize = parseInt(size);
+  elementPage = 1;
+  renderElementTable();
+}
+
+// ===== Select Element =====
+function selectElement(id, name) {
+  if (selectedElement === id) {
+    // Toggle off
+    selectedElement = null;
+    document.getElementById('filterTag').style.display = 'none';
+    showToast('已取消元素筛选，显示全部数据');
+  } else {
+    selectedElement = id;
+    document.getElementById('filterTag').style.display = 'inline-flex';
+    document.getElementById('filterTagText').textContent = '元素：' + name;
+    document.getElementById('totalRecords').textContent = '12,450';
+    showToast('已筛选元素「' + name + '」，共 12,450 条记录');
+  }
+  renderElementTable();
+}
+
+// ===== Clear Element Filter =====
+function clearElementFilter() {
+  selectedElement = null;
+  document.getElementById('filterTag').style.display = 'none';
+  document.getElementById('totalRecords').textContent = '18,375,408';
+  renderElementTable();
+  showToast('已取消元素筛选');
+}
+
+// ===== Sort Elements =====
+function sortElements(field) {
+  if (currentSort.field === field) {
+    currentSort.desc = !currentSort.desc;
+  } else {
+    currentSort.field = field;
+    currentSort.desc = true;
+  }
+
+  filteredElementData.sort((a, b) => {
+    if (currentSort.desc) {
+      return b[field] - a[field];
+    }
+    return a[field] - b[field];
+  });
+
+  elementPage = 1;
+  renderElementTable();
+}
+
+// ===== Mock Data =====
+const events = [
+  { time: '2026-05-15 14:23:01', uid: '151277418663', tid: '1510', event: '新搜索导航搜索曝光', comp: '新搜索导航', device: 'iPhone', os: 'iOS 16', network: 'WiFi', bizUrl: 'https://saas.joybenefits.cn/template/1502647572117442?index=1', json: '{"type":"ep","event_id":"home_search_btn_expose","business_id":"search_btn","business_name":"搜索按钮","element_tag":"button","intersection_ratio":1}' },
+  { time: '2026-05-15 14:22:58', uid: '151277418663', tid: '1510', event: '新搜索导航-展开', comp: '新搜索导航', device: 'iPhone', os: 'iOS 16', network: 'WiFi', bizUrl: '', json: '{"type":"tap","event_id":"nav_expand_001"}' },
+  { time: '2026-05-15 14:22:45', uid: '151277314981', tid: '1073', event: '新轮播图曝光', comp: '轮播图', device: 'Android', os: 'Android 12', network: '4G', bizUrl: 'https://saas.joybenefits.cn/img/banner_038.png', json: '{"type":"ep","event_id":"carousel_exp_005","business_id":"banner_038","business_name":"限时折扣活动Banner","index":2}' },
+  { time: '2026-05-15 14:22:30', uid: '151277315858', tid: '1073', event: '新搜索导航-取消', comp: '新搜索导航', device: 'iPhone', os: 'iOS 14', network: '5G', bizUrl: '', json: '{"type":"tap","event_id":"nav_cancel_003"}' },
+  { time: '2026-05-15 14:22:15', uid: '151277426512', tid: '1510', event: '新搜索导航-热度', comp: '新搜索导航', device: 'Android', os: 'Android 14', network: 'WiFi', bizUrl: 'https://saas.joybenefits.cn/search/hot?tenantId=1510', json: '{"type":"tap","event_id":"nav_hot_002","business_id":"search_hot","keyword":"热门推荐"}' },
+  { time: '2026-05-15 14:22:01', uid: '151277622734', tid: '1073', event: '新搜索导航-导航', comp: '新搜索导航', device: 'iPhone', os: 'iOS 16', network: 'WiFi', bizUrl: '', json: '{"type":"tap","event_id":"nav_goto_001"}' },
+  { time: '2026-05-15 14:21:48', uid: '151277314981', tid: '1073', event: '新搜索导航-收起', comp: '新搜索导航', device: 'Android', os: 'Android 12', network: '4G', bizUrl: '', json: '{"type":"tap","event_id":"nav_collapse_001"}' },
+  { time: '2026-05-15 14:21:30', uid: '151277418663', tid: '1510', event: '新轮播图曝光', comp: '轮播图', device: 'iPhone', os: 'iOS 16', network: 'WiFi', bizUrl: 'https://saas.joybenefits.cn/img/banner_040.png', json: '{"type":"ep","event_id":"carousel_exp_006","business_id":"banner_040","business_name":"新品上市Banner","index":0}' },
+  { time: '2026-05-15 14:21:15', uid: '151277315858', tid: '1073', event: '新搜索导航搜索曝光', comp: '新搜索导航', device: 'iPhone', os: 'iOS 14', network: '5G', bizUrl: 'https://saas.joybenefits.cn/template/1073?index=2', json: '{"type":"ep","event_id":"home_search_btn_expose","business_id":"search_btn"}' },
+  { time: '2026-05-15 14:21:00', uid: '151277426512', tid: '1510', event: '新搜索导航-展开', comp: '新搜索导航', device: 'Android', os: 'Android 14', network: 'WiFi', bizUrl: '', json: '{"type":"tap","event_id":"nav_expand_002"}' },
+  { time: '2026-05-15 14:20:45', uid: '151277622734', tid: '1073', event: '新轮播图曝光', comp: '轮播图', device: 'iPhone', os: 'iOS 16', network: 'WiFi', bizUrl: 'https://saas.joybenefits.cn/img/banner_041.png', json: '{"type":"ep","event_id":"carousel_exp_007","business_id":"banner_041","business_name":"满减优惠Banner","index":1}' },
+  { time: '2026-05-15 14:20:30', uid: '151277314981', tid: '1073', event: '新搜索导航-热度', comp: '新搜索导航', device: 'Android', os: 'Android 12', network: '4G', bizUrl: 'https://saas.joybenefits.cn/search/hot?tenantId=1073', json: '{"type":"tap","event_id":"nav_hot_003","business_id":"search_hot"}' },
+  { time: '2026-05-15 14:20:15', uid: '151277418663', tid: '1510', event: '新搜索导航-导航', comp: '新搜索导航', device: 'iPhone', os: 'iOS 16', network: 'WiFi', bizUrl: '', json: '{"type":"tap","event_id":"nav_goto_002"}' },
+  { time: '2026-05-15 14:20:00', uid: '151277315858', tid: '1073', event: '新搜索导航-取消', comp: '新搜索导航', device: 'iPhone', os: 'iOS 14', network: '5G', bizUrl: '', json: '{"type":"tap","event_id":"nav_cancel_004"}' },
+  { time: '2026-05-15 14:19:45', uid: '151277426512', tid: '1510', event: '新搜索导航-收起', comp: '新搜索导航', device: 'Android', os: 'Android 14', network: 'WiFi', bizUrl: '', json: '{"type":"tap","event_id":"nav_collapse_002"}' },
+  { time: '2026-05-15 14:19:30', uid: '151277622734', tid: '1073', event: '新轮播图曝光', comp: '轮播图', device: 'iPhone', os: 'iOS 16', network: 'WiFi', bizUrl: 'https://saas.joybenefits.cn/img/banner_042.png', json: '{"type":"ep","event_id":"carousel_exp_008","business_id":"banner_042","business_name":"会员专享Banner","index":3}' },
+  { time: '2026-05-15 14:19:15', uid: '151277314981', tid: '1073', event: '新搜索导航-确定', comp: '新搜索导航', device: 'Android', os: 'Android 12', network: '4G', bizUrl: '', json: '{"type":"tap","event_id":"nav_confirm_005"}' },
+  { time: '2026-05-15 14:19:00', uid: '151277418663', tid: '1510', event: '新搜索导航-展开', comp: '新搜索导航', device: 'iPhone', os: 'iOS 16', network: 'WiFi', bizUrl: '', json: '{"type":"tap","event_id":"nav_expand_003"}' },
+  { time: '2026-05-15 14:18:45', uid: '151277315858', tid: '1073', event: '新搜索导航-热度', comp: '新搜索导航', device: 'iPhone', os: 'iOS 14', network: '5G', bizUrl: 'https://saas.joybenefits.cn/search/hot?tenantId=1073', json: '{"type":"tap","event_id":"nav_hot_004","business_id":"search_hot"}' },
+  { time: '2026-05-15 14:18:30', uid: '151277426512', tid: '1510', event: '新搜索导航-导航', comp: '新搜索导航', device: 'Android', os: 'Android 14', network: 'WiFi', bizUrl: '', json: '{"type":"tap","event_id":"nav_goto_003"}' },
+];
+
+// ===== Render Table =====
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = events.map((e, i) => `
+    <tr>
+      <td style="color:var(--text-muted);font-size:12px;">${i + 1}</td>
+      <td style="font-size:12px;color:var(--text-secondary);">${e.time}</td>
+      <td class="plain-cell">${e.uid}</td>
+      <td>${e.tid}</td>
+      <td class="event-name">${e.event}</td>
+      <td>${e.comp}</td>
+      <td class="plain-cell">${e.device}</td>
+      <td class="plain-cell">${e.os}</td>
+      <td class="plain-cell">${e.network}</td>
+      <td class="url-cell" title="${e.bizUrl}">${e.bizUrl || '-'}</td>
+      <td>
+        <span class="json-toggle" onclick="openJsonModal(${i})">▶ 查看JSON</span>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function formatJson(str) {
+  try {
+    const obj = JSON.parse(str);
+    return syntaxHighlight(JSON.stringify(obj, null, 2));
+  } catch { return str; }
+}
+
+function syntaxHighlight(json) {
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (match) => {
+    let cls = 'json-number';
+    if (/^"/.test(match)) {
+      cls = /:$/.test(match) ? 'json-key' : 'json-string';
+    }
+    return `<span class="${cls}">${match}</span>`;
+  });
+}
+
+// ===== JSON Modal =====
+function openJsonModal(idx) {
+  const e = events[idx];
+  const formattedJson = formatJson(e.json);
+  document.getElementById('jsonModalContent').innerHTML = formattedJson;
+  document.getElementById('jsonModal').classList.add('open');
+}
+
+function closeJsonModal() {
+  document.getElementById('jsonModal').classList.remove('open');
+}
+
+// ===== Utility Functions =====
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+function refreshData() {
+  showToast('数据刷新成功');
+}
+
+function exportData() {
+  showToast('报表导出中，预计需要 30 秒...');
+}
+
+function resetFilters() {
+  document.querySelectorAll('.filter-input').forEach(i => {
+    if (i.id !== 'dateStart' && i.id !== 'dateEnd') i.value = '';
+  });
+  document.querySelectorAll('.filter-select').forEach(s => s.selectedIndex = 0);
+  // 重置日期为近7天
+  document.getElementById('dateStart').value = '2026-05-08';
+  document.getElementById('dateEnd').value = '2026-05-15';
+  // 重置租户选择
+  document.getElementById('tenantInput').value = '';
+  selectedTenantId = '';
+  clearElementFilter();
+  showToast('筛选条件已重置');
+}
+
+
+
+// ===== Init =====
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    renderSummary();
+    renderElementTable();
+    renderTable();
+    initTenantSearchableSelect();
+  } catch (err) {
+    console.error('页面初始化失败:', err);
+    showToast('页面加载异常，请刷新重试');
+  }
+});
+</script>
+</body>
+</html>
