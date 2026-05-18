@@ -883,14 +883,14 @@ function sortElements(field) {
     currentSort.desc = true;
   }
 
-  elementData.sort((a, b) => {
+  filteredElementData.sort((a, b) => {
     if (currentSort.desc) {
       return b[field] - a[field];
-    } else {
-      return a[field] - b[field];
     }
+    return a[field] - b[field];
   });
 
+  elementPage = 1;
   renderElementTable();
 }
 

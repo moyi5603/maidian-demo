@@ -1,4 +1,7 @@
 .node-local/
 .vercel/
+dist/
 create-prd.js
 埋点数据明细表-PRD.md
+.github/
+start.sh
